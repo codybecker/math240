@@ -75,7 +75,7 @@ bb_stats <- read_csv("data/baseballStats.csv",
                      skip = 1)
 df <- bb_stats %>%
         filter(year == "2011") 
-df1 <- df[c(3,2,4:9)]
+df1 <- df[c(3,4:9)]
 ```
 ***
 # Methodology and steps to get final regression equation
