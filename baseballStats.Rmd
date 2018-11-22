@@ -1,5 +1,5 @@
 ---
-title: "Untitled"
+title: "HOA #3"
 knit: (function(input_file, encoding) {
   out_dir <- 'docs';
   rmarkdown::render(input_file,
@@ -14,22 +14,228 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+# Assignment
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+1. Use worksheet “baseball stats” to perform a multiple regression analysis on the dataset found in BB2011 tab, using Wins as the dependent variable, and League, ERA, Runs Scored, Hits Allowed, Walks Allowed, Saves, and Errors as candidates for the independent variables.  Perform the analysis at the 5% significance level.
+    a. Create a full write up, where you write your statistical analysis step by step. In your write up, make sure you address the following points.
+        + Methodology and steps that you took to get to your final regression equation.
+        + Final regression equation output.
+        + What is the final regression equation?
+        + Interpret all the coefficients in the equation.  
+        + Speak to whether the signs on the coefficients make sense.
+        + Interpret R squared.
+        + Include a full residual analysis.
+        + What is the residual of the Tampa Bay observation?
+    b) Now, use tab BB2012 to make predictions of wins in 2012, using the model you created with the 2011 stats.   
+        + How many games are the Giants (SFG) expected to win in 2012?
+        + Which team is predicted by the model to have the worst record in 2012?
+        + Which team is predicted by the model to have the best record in 2012?
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
-```{r cars}
-summary(cars)
+      
+2. Use the CocaCola data set to analyze quarterly data on Coca Cola’s revenues.  
+    a. Plot the time series as a line graph. Make sure the graph is polished enough to be included in a formal report  - i.e. it has a good title, axis titles/formatting, etc. (extra credit: format the x axis to have years and quarters)
+    b. Perform a regression using seasonal binaries.  Use 0.1 level of significance for eliminating p-values.   Include the final output and write the final regression equation.
+    c. Plot the fitted values of your time series on the same graph as the actuals.  Does your regression look good?
+    d. Interpret the results.  Make sure to talk about seasonality.
+    e. Use the regression equation to make a prediction for each quarter in 2011.
+
+3. Bob analyzed water damage claims filed at a small Louisiana home insurance company over the last 15 years. He fitted several different trend models, shown below. Which trend model seems most reasonable (or more than one) for making forecasts for the next three years? What about the principle of Occam's Razor?
+
+```{r, echo=FALSE, include=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(GGally)
+library(MASS)
 ```
 
-## Including Plots
+```{r, echo = FALSE, include = FALSE}
 
-You can also embed plots, for example:
+bb_stats <- read_csv("data/baseballStats.csv",
+                     col_names = c("team",
+                                   "league",
+                                   "wins",
+                                   "era",
+                                   "runs_scored",
+                                   "hits_allowed",
+                                   "walks_allowed",
+                                   "saves",
+                                   "errors",
+                                   "year"),
+                     col_types = cols(team = col_factor(levels = NULL),
+                                      league = col_factor(levels = NULL),
+                                      wins = col_double(),
+                                      era = col_double(),
+                                      runs_scored = col_double(),
+                                      hits_allowed = col_double(),
+                                      walks_allowed = col_double(),
+                                      saves = col_double(),
+                                      errors = col_double(),
+                                      year = col_factor(levels = NULL)),
+                     skip = 1)
+df <- bb_stats %>%
+        filter(year == "2011") 
+df1 <- df[c(3,2,4:9)]
+```
+***
+# Methodology and steps to get final regression equation
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+<!-- #### Run step-wise analysis -->
+```{r, echo = FALSE, include=FALSE}
+full.model <- lm(wins ~ . , data = df1)
+step.model <- stepAIC(full.model,
+                      direction = "both",
+                      trace = "false")
+print(step.model)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+#### Look at all variables
+```{r, echo = FALSE}
+print(summary(lm(wins ~ . , data = df1)))
+```
+
+#### Look at only runs_scored
+```{r, echo = FALSE}
+summary(lm(wins ~ runs_scored, data = df1))$coefficients
+```
+
+#### Look at only era
+```{r, echo = FALSE}
+summary(lm(wins ~ era, data = df1))$coefficients
+```
+
+#### Look at only saves
+```{r, echo = FALSE}
+summary(lm(wins ~ saves, data = df1))$coefficients
+```
+
+#### Look at only runs_scored & era (best)
+```{r, echo = FALSE}
+summary(lm(wins ~ runs_scored + era, data = df1))$coefficients
+```
+
+#### Look at only runs_scored & saves
+```{r, echo = FALSE}
+summary(lm(wins ~ runs_scored + saves, data = df1))$coefficients
+```
+
+#### Look at only era & saves
+```{r, echo = FALSE}
+summary(lm(wins ~ era + saves, data = df1))$coefficients
+```
+
+#### Look at only runs_scored & era & saves
+```{r, echo = FALSE}
+summary(lm(wins ~ runs_scored + era + saves, data = df1))$coefficients
+```
+
+***
+## Final regression equation output *(Stepwise)*:
+####_Model 1_
+```{r, echo = FALSE}
+model <- summary(lm(wins ~ era + 
+                  runs_scored +
+                  hits_allowed +
+                  walks_allowed + 
+                  saves, 
+           data = df1))
+ print(model)
+
+```
+
+***
+## Coefficient interpretation
+Model 1 produced the following fitted regression line
+
+Wins = `r coef(model)[[1]]` + `r coef(model)[[2]]`*ERA* + `r coef(model)[[3]]`*Hits Allowed* + `r coef(model)[[4]]`*Walks Allowed* + `r coef(model)[[5]]`*Saves*
+
+(Adj Rsquared =  0.8941, SE = 97.35)
+
+* The intercept tells us that the estimated wins, when all other regressors are zero, is 97. 
+* Each 1 point increase in *ERA* reduces the wins by 9; all else remains equal.
+* The coeficient of *Run Scored* implies that, on average, each additional run scored adds .08 to the wins, or approx. 11 additional runs scored adds 1 to the wins.
+* *Hits Allowed* coefficient tells us that, on average, each additional hit allowed reduces wins by 0.025 or approx 40 hits hits allowed reduces wins by 1.
+*  The coeficient of *Walks Allowed* says that, on average, each additional run scored adds .08 to the wins, or approx. 11 additional runs scored adds 1 to the wins.
+* Coefficient of *Saves* tells us that, on average, each additional save adds .38 to the wins. 
+
+The signs are what we expect.  Lower *ERA, Hits Allowed, and Walks Allowed* should result in less wins.  Whereas more *Runs & Saves* should result in more wins.  
+
+
+## R squared
+Our R squared is .9123 and adjusted R squared is 0.8941. Both are high indicating a good fit, and also the gap is small which indicates a more parsimonious model.
+
+
+## Residual Analysis
+#### plot predicted vs residuals
+No clear pattern so no reason to suspect heteroscedasticity
+
+```{r, echo = FALSE, fig.height=5, fig.width=5}
+d <- df1
+fit <- lm(wins ~ era + 
+                  runs_scored +
+                  hits_allowed +
+                  walks_allowed + 
+                  saves, 
+          data = d) # fit the model
+d$predicted <- predict(fit)   # Save the predicted values
+d$residuals <- residuals(fit) # Save the residual values
+g <- ggplot(d, aes(x = predicted, y = residuals)) +
+        geom_smooth(method = "lm", se = FALSE, color = "lightgrey") +     # regression line  
+        geom_segment(aes(xend = predicted, yend = 0), alpha = .2) +      # draw line from point to line
+        geom_point(aes(color = abs(residuals), size = abs(residuals))) +  # size of the points
+        scale_color_continuous(low = "green", high = "red") +             # colour of the points mapped to residual size - green smaller, red larger
+        guides(color = FALSE, size = FALSE) +                             # Size legend removed
+        # geom_point(aes(y = residuals), shape = 1) +
+        theme_bw()
+print(g)
+```
+
+
+#### Check residuals
+```{r, echo = FALSE, fig.height=5, fig.width=5}
+par(mfrow = c(2, 2))  # Split the plotting panel into a 2 x 2 grid
+plot(fit)
+```
+
+#### Residual of Tampa Bay
+```{r, echo = FALSE, fig.height=5, fig.width=5}
+df1 <- df[c(3,4:9)]
+d <- df1
+fit <- lm(wins ~ ., data = d)
+d$predicted <- predict(fit)  
+d$residuals <- residuals(fit) 
+d$team <- df$team
+d[d$team == "Tampa Bay", 10:9]
+```
+***
+#### 2012 Predictions
+```{r, echo = FALSE, fig.height=5, fig.width=5}
+df12 <- bb_stats %>%
+        filter(year == "2012") %>%
+        select_("era", "runs_scored", "hits_allowed", "walks_allowed", "saves", "team")
+
+fit <- lm(wins ~ era + 
+                  runs_scored +
+                  hits_allowed +
+                  walks_allowed + 
+                  saves, 
+          data = d) # fit the model
+d$predicted <- predict(fit)   # Save the predicted values
+d$residuals <- residuals(fit)
+
+predictions = predict.lm(fit, df12)
+df12$predictions <- predictions
+```
+__SFG__ 
+
+`r df12[28,6:7]`
+
+__Worst__
+
+`r df12 %>% arrange(predictions) %>% select_("team", "predictions") %>% head(n = 1)`
+
+__Best__
+
+`r df12 %>% arrange(predictions) %>% select_("team", "predictions") %>% tail(n = 1)`
+
