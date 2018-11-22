@@ -13,7 +13,7 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-
+***
 # Assignment
 
 1. Use worksheet “baseball stats” to perform a multiple regression analysis on the dataset found in BB2011 tab, using Wins as the dependent variable, and League, ERA, Runs Scored, Hits Allowed, Walks Allowed, Saves, and Errors as candidates for the independent variables.  Perform the analysis at the 5% significance level.
@@ -42,15 +42,13 @@ knitr::opts_chunk$set(echo = TRUE)
 
 3. Bob analyzed water damage claims filed at a small Louisiana home insurance company over the last 15 years. He fitted several different trend models, shown below. Which trend model seems most reasonable (or more than one) for making forecasts for the next three years? What about the principle of Occam's Razor?
 
-```{r, echo=FALSE, include=FALSE}
+
+```{r libraries, echo = FALSE, include = FALSE}
+library(MASS)
 library(tidyverse)
 library(ggplot2)
 library(GGally)
-library(MASS)
-```
-
-```{r, echo = FALSE, include = FALSE}
-
+library(PerformanceAnalytics)
 bb_stats <- read_csv("data/baseballStats.csv",
                      col_names = c("team",
                                    "league",
@@ -78,10 +76,10 @@ df <- bb_stats %>%
 df1 <- df[c(3,4:9)]
 ```
 ***
-# Methodology and steps to get final regression equation
-
-<!-- #### Run step-wise analysis -->
-```{r, echo = FALSE, include=FALSE}
+# Baseball Stats
+# a. Methodology and steps to get final regression equation
+### Run step-wise analysis
+```{r stepmodel, echo = FALSE, include=FALSE, cache=TRUE}
 full.model <- lm(wins ~ . , data = df1)
 step.model <- stepAIC(full.model,
                       direction = "both",
@@ -89,66 +87,30 @@ step.model <- stepAIC(full.model,
 print(step.model)
 ```
 
-
-#### Look at all variables
-```{r, echo = FALSE}
-print(summary(lm(wins ~ . , data = df1)))
-```
-
-#### Look at only runs_scored
-```{r, echo = FALSE}
-summary(lm(wins ~ runs_scored, data = df1))$coefficients
-```
-
-#### Look at only era
-```{r, echo = FALSE}
-summary(lm(wins ~ era, data = df1))$coefficients
-```
-
-#### Look at only saves
-```{r, echo = FALSE}
-summary(lm(wins ~ saves, data = df1))$coefficients
-```
-
-#### Look at only runs_scored & era (best)
-```{r, echo = FALSE}
-summary(lm(wins ~ runs_scored + era, data = df1))$coefficients
-```
-
-#### Look at only runs_scored & saves
-```{r, echo = FALSE}
-summary(lm(wins ~ runs_scored + saves, data = df1))$coefficients
-```
-
-#### Look at only era & saves
-```{r, echo = FALSE}
-summary(lm(wins ~ era + saves, data = df1))$coefficients
-```
-
-#### Look at only runs_scored & era & saves
-```{r, echo = FALSE}
-summary(lm(wins ~ runs_scored + era + saves, data = df1))$coefficients
-```
-
-***
-## Final regression equation output *(Stepwise)*:
-####_Model 1_
-```{r, echo = FALSE}
+####__Model 1__ *(Stepwise)*
+```{r model_1, echo = FALSE, cache=TRUE}
 model <- summary(lm(wins ~ era + 
                   runs_scored +
                   hits_allowed +
                   walks_allowed + 
                   saves, 
            data = df1))
- print(model)
-
+print(model)
 ```
 
 ***
-## Coefficient interpretation
+### Coefficient interpretation
+#### Correlation Matrix
+```{r, echo=FALSE, cache=TRUE}
+chart.Correlation(df[c(4:8)], histogram=TRUE, pch=19)
+```
+
+First thing we notice is a high correlation between *Hits Allowed* and *ERA*. Most likely a hit is required to earn a run so that makes sense.  *ERA* shows the highest correlation among coefficients.  *Runs Scored* has the lowest correlation with other coefficients.  This makes a lot of sense because *Runs Scored* is an offensive parameter, whereas all other coefficients are defensive parameters.  
+
+
 Model 1 produced the following fitted regression line
 
-Wins = `r coef(model)[[1]]` + `r coef(model)[[2]]`*ERA* + `r coef(model)[[3]]`*Hits Allowed* + `r coef(model)[[4]]`*Walks Allowed* + `r coef(model)[[5]]`*Saves*
+__Wins = `r coef(model)[[1]]` + `r coef(model)[[2]]`*(ERA)* + `r coef(model)[[3]]`*(Hits Allowed)* + `r coef(model)[[4]]`*(Walks Allowed)* + `r coef(model)[[5]]`*(Saves)*__
 
 (Adj Rsquared =  0.8941, SE = 97.35)
 
@@ -162,15 +124,16 @@ Wins = `r coef(model)[[1]]` + `r coef(model)[[2]]`*ERA* + `r coef(model)[[3]]`*H
 The signs are what we expect.  Lower *ERA, Hits Allowed, and Walks Allowed* should result in less wins.  Whereas more *Runs & Saves* should result in more wins.  
 
 
-## R squared
-Our R squared is .9123 and adjusted R squared is 0.8941. Both are high indicating a good fit, and also the gap is small which indicates a more parsimonious model.
+#### R squared and Adj. R squared
+R squared = `r model$r.squared` & Adj R sqaured = `r model$adj.r.squared`
 
+R sqaured high indicating a good fit, and also the gap between R sqaured and Adj R squared is small which indicates a more parsimonious model.
 
-## Residual Analysis
-#### plot predicted vs residuals
+### Residual Analysis
+
 No clear pattern so no reason to suspect heteroscedasticity
 
-```{r, echo = FALSE, fig.height=5, fig.width=5}
+```{r, echo = FALSE, fig.height=5, fig.width=5, cache=TRUE}
 d <- df1
 fit <- lm(wins ~ era + 
                   runs_scored +
@@ -187,16 +150,67 @@ g <- ggplot(d, aes(x = predicted, y = residuals)) +
         scale_color_continuous(low = "green", high = "red") +             # colour of the points mapped to residual size - green smaller, red larger
         guides(color = FALSE, size = FALSE) +                             # Size legend removed
         # geom_point(aes(y = residuals), shape = 1) +
-        theme_bw()
+        theme_bw() + theme(plot.title = element_text(hjust = 0.5)) + 
+        ggtitle("Residuals vs Fitted (Large)")
 print(g)
 ```
-
-
-#### Check residuals
-```{r, echo = FALSE, fig.height=5, fig.width=5}
+```{r, echo = FALSE}
 par(mfrow = c(2, 2))  # Split the plotting panel into a 2 x 2 grid
 plot(fit)
 ```
+
+Normal QQ plot looks good the more extreme standardized residuals (eg >|1| ) tent to slant above and below the identity line.  This indicated a slight left skew with a light tail.  Scale location of residuals doesn't give us much more information from fitted v residuals because we don't have any outliers. No influential cases arise from "Residuals vs Leverage" as all of the cases are within the the dashed Cook’s distance line, although point 28 and 11 are close. 
+
+## Evans' Rule
+
+Based on  logic we can assume that a team that brings in more runs and restricts runs (eg era) will have more wins.  Based on the analysis done so far, we know that our data has parameters associated with offense and defensive.  Defensive parameters are strongly correlated wtih other defensive parmaters and likewise for offensive with offensive. A model with fewer predictors, and less correlated predictors, might provide the same magnitude of predictve power without the same magnitude of risk of everfitting. We propose one offensive (Runs) and one defensive (ERA)
+
+#### __Model 2__ *(ERA + Runs Scored to predict wins)*
+```{r, echo = FALSE, cache=TRUE}
+model2 <- lm(wins ~ era + runs_scored, data = df1)
+print(summary(model2))
+```
+### Coefficient interpretation
+Both predictors, ERA and Runs Scored are significant at .001 level.  Every one point drop in ERA adds 19 to Wins.  Every 10 Runs Scored adds 1 to Wins.
+
+#### Correlation Matrix
+```{r model1coefcorr, echo=FALSE, cache=TRUE}
+chart.Correlation(df1[c(2:3)], histogram=TRUE, pch=19)
+```
+Looks great.  Low correlation, but as expected, positive correlation.  
+
+#### R squared and Adj. R squared
+R squared = `r model2$r.squared` & Adj R sqaured = `r model2$adj.r.squared` Even though R squared for this model is lower than our other model, out difference between R squared and Adj R squared is lower.  This model has less overfitting.
+
+### Residual Analysis
+
+No clear pattern so no reason to suspect heteroscedasticity
+
+```{r, echo = FALSE, fig.height=5, fig.width=5, cache=TRUE}
+d <- df1
+fit <- lm(wins ~ era + 
+                  runs_scored, 
+          data = d) # fit the model
+d$predicted <- predict(fit)   # Save the predicted values
+d$residuals <- residuals(fit) # Save the residual values
+g <- ggplot(d, aes(x = predicted, y = residuals)) +
+        geom_smooth(method = "lm", se = FALSE, color = "lightgrey") +     # regression line  
+        geom_segment(aes(xend = predicted, yend = 0), alpha = .2) +      # draw line from point to line
+        geom_point(aes(color = abs(residuals), size = abs(residuals))) +  # size of the points
+        scale_color_continuous(low = "green", high = "red") +             # colour of the points mapped to residual size - green smaller, red larger
+        guides(color = FALSE, size = FALSE) +                             # Size legend removed
+        # geom_point(aes(y = residuals), shape = 1) +
+        theme_bw() + theme(plot.title = element_text(hjust = 0.5)) + 
+        ggtitle("Residuals vs Fitted (Large)")
+print(g)
+par(mfrow = c(2, 2))  # Split the plotting panel into a 2 x 2 grid
+plot(fit)
+```
+
+Normal QQ plot looks good, slight left skew with a light tail.  No influential cases based on our residuals plots.
+
+## Model Decision
+Model 2 is ultimately a better choice even though R squared is lower.  The model uses less predictors so there is less chance of overfitting. With only 30 observations, less predictors the better.  
 
 #### Residual of Tampa Bay
 ```{r, echo = FALSE, fig.height=5, fig.width=5}
@@ -208,34 +222,48 @@ d$residuals <- residuals(fit)
 d$team <- df$team
 d[d$team == "Tampa Bay", 10:9]
 ```
-***
-#### 2012 Predictions
+
+---
+
+# b. 2012 Predictions *(Model 1 vs Model 2 v Actual)*
 ```{r, echo = FALSE, fig.height=5, fig.width=5}
-df12 <- bb_stats %>%
+df11 <- bb_stats %>%
         filter(year == "2012") %>%
         select_("era", "runs_scored", "hits_allowed", "walks_allowed", "saves", "team")
 
-fit <- lm(wins ~ era + 
+fit1 <- lm(wins ~ era + 
                   runs_scored +
                   hits_allowed +
                   walks_allowed + 
                   saves, 
           data = d) # fit the model
-d$predicted <- predict(fit)   # Save the predicted values
-d$residuals <- residuals(fit)
+d$predicted1 <- predict(fit1)   # Save the predicted values
+d$residuals1 <- residuals(fit1)
+predictions1 = predict.lm(fit1, df11)
+df11$predictions1 <- round(predictions1, 0)
+df22 <- bb_stats %>%
+        filter(year == "2012") %>%
+        select_("era", "runs_scored", "hits_allowed", "walks_allowed", "saves", "team")
 
-predictions = predict.lm(fit, df12)
-df12$predictions <- predictions
+fit2 <- lm(wins ~ era + 
+                  runs_scored, 
+          data = d) # fit the model
+d$predicted2 <- predict(fit2)   # Save the predicted values
+d$residuals2 <- residuals(fit2)
+
+predictions2 = predict.lm(fit2, df22)
+df22$predictions2 <- round(predictions2, 0)
 ```
-__SFG__ 
+*SFG 2012 wins*
 
-`r df12[28,6:7]`
+__Model 1:__ `r df11[28,6:7]` v __Model 2:__ `r df22[28,6:7]` v __Actual:__ San Francisco, 94
 
-__Worst__
+*Worst record of 2012 and team*
 
-`r df12 %>% arrange(predictions) %>% select_("team", "predictions") %>% head(n = 1)`
+__Model 1:__ `r df11 %>% arrange(predictions1) %>% select_("team", "predictions1") %>% head(n = 1)` v __Model 2:__ `r df22 %>% arrange(predictions2) %>% select_("team", "predictions2") %>% head(n = 1)` v __Actual:__ Houston, 55 
 
-__Best__
+*Best Record of 2012 and team*
 
-`r df12 %>% arrange(predictions) %>% select_("team", "predictions") %>% tail(n = 1)`
+__Model 1:__ `r df11 %>% arrange(predictions1) %>% select_("team", "predictions1") %>% tail(n = 1)` v __Model 2:__ `r df22 %>% arrange(predictions2) %>% select_("team", "predictions2") %>% tail(n = 1)` v __Acual:__ Washington, 94
+***
 
